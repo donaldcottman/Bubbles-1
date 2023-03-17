@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.js"
+    integrity="sha512-+4O1tTAf2Ku73pJ0uXuoTFbXM8agSnDhmqlMylH37E1JvyLu+ZoX2Cr/E16Xljt9R9WD1tzgRXGLQPb2YT1m1A=="
+    crossorigin="anonymous"
+    ></script>
+    <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
+    integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
+    crossorigin="anonymous"
+    ></script>
+    <title>Bubbles: Stonks</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div id="svgGraphContainerid" style="position: relative;">
+        <div id="sessionNotStartid">START THE SESSION</div>
+        <svg></svg>
+      </div>
+      <div class="slidecontainer">
+        <input type="range" min="0" max="100" value="0" class="slider" id="myRange" />
+      </div>
+      <div class="controls">
+        <button type="button" class="btn btn-dark startBubbles" onclick="fetchData('null')">Start</button>
+        <div class="form-select" style="margin-left: 30px; margin: auto 2em auto 0em">
+          <select id="stockDeltaPTimespan">
+              <option value="3">3 minutes</option>
+              <option value="5" selected>5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="25">25 minutes</option>
+              <option value="40">40 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="180">3 hours</option>
+              <option value="240">4 hours</option>
+          </select>
+        </div>
+        <button onclick="replaySession()" type="button" class="btn btn-warning playAndStop">Play Back Session</button>
+        <!-- <input id="exchangeAuthenticationid" name="exchangeAuthenticationid" class="" type="text" placeholder="012345"> -->
+        <!-- <button onclick="buyStock()" type="button" class="btn btn-warning playAndStop">Buy APPL b*tch</button> -->
+        <button id="play" style="display: none;">Play</button>
+        <button id="stop" type="button" class="btn btn-warning playAndStop">Stop</button>
+        <button id="speedDown" type="button" class="btn btn-info tickSpeedAdjust">-</button>
+        <button id="speedUp" type="button" class="btn btn-info tickSpeedAdjust">+</button>
+        <span id="tickspersecond">4 ticks per second</span>
+        <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#robinhoodLoginModalid">Robinhood Login</button>
+      </div>
+      <div class="modal fade" id="robinhoodLoginModalid" tabindex="-1" role="dialog" aria-labelledby="robinhoodLoginModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="robinhoodLoginModalLabel">Robinhood API Login</h5>
+              <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button> -->
+            </div>
+            <div class="modal-body">
+              <div style="padding: 0 15px 0 15px;">Login with your Robinhood credentials to Buy and Sell stocks on Bubbles (may not work if you have 2FA enabled on your Robinhood account).</div>
+              <div class="RBLoginInputs">
+                <label for="robinhoodEmailid">Robinhood Email:</label>
+                <input id="robinhoodEmailid" type="text" placeholder="Email">
+                <label for="robinhoodPasswordid">Robinhood Password:</label>
+                <input id="robinhoodPasswordid" type="text" placeholder="Password">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="button" onclick="robinhoodLogin()" class="btn btn-success">Login to Robinhood API</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="scale-input">
+          <label>Min Y%:</label>
+          <input type="text" id="yMin" name="yMin" />
+        </div>
+        <div class="scale-input">
+          <label>Max Y%:</label>
+          <input type="text" id="yMax" name="yMax" />
+        </div>
+        <button style="width: 8em" id="setY" type="button" class="btn btn-dark XYAxis">Set Y-Axis</button>
+        <button style="width: 8em" id="autoSetY" type="button" class="btn btn-danger XYAxis">Auto Set Y</button>
+      </div>
+      <div class="controls">
+        <div class="scale-input xAxisScale" style="width: 6em">
+          <label>Min X:</label>
+          <select name="minX" id="minX" style="width: 8em">
+            <option value="1" selected>1</option>
+            <option value="10">10</option>
+            <option value="100">100</option>
+            <option value="1000">1,000</option>
+            <option value="10000">10,000</option>
+            <option value="100000">100,000</option>
+            <option value="1000000">1,000,000</option>
+            <option value="10000000">10,000,000</option>
+            <option value="100000000">100,000,000</option>
+            <option value="1000000000">1,000,000,000</option>
+          </select>
+        </div>
+        <div class="scale-input xAxisScale" style="width: 6em">
+          <label>Max X:</label>
+          <select name="maxX" id="maxX" style="width: 8em">
+            <option value="1">1</option>
+            <option value="10">10</option>
+            <option value="100">100</option>
+            <option value="1000">1,000</option>
+            <option value="10000">10,000</option>
+            <option value="100000">100,000</option>
+            <option value="1000000">1,000,000</option>
+            <option value="10000000">10,000,000</option>
+            <option value="100000000" selected>100,000,000</option>
+            <option value="1000000000">1,000,000,000</option>
+          </select>
+        </div>
+        <button style="width: 8em" id="autoSetX" type="button" class="btn btn-danger XYAxis">Auto Set X</button>
+      </div>
+      <div>&nbsp;</div>
+    </div>
+  </body>
+</html>
+<script>
+  //   const width = 1920;
+  //   const height = 1080;
+  let width = document.querySelector(".app").clientWidth;
+  let height = document.querySelector(".app").clientHeight;
+  const m = [140, 20, 120, 140];
+  const radius = 5;
+  let timeIndex = 0; // index of array in json file for the displayed tick
+  let activeStock; // the stock that was clicked on the chart
+  let xForceStrength = 0.04;
+  let yForceStrength = 0.99;
+  let alpha = 0.3;
+  let alphaDecay = 0.1;
+  let decayTimeout; // reference to timeout ID for applying alpha decay
+  let intervalTimer; // reference for setInterval ID so we can stop animation
+  let frequency = 250; // animation update frequency
+  let xMin = 1;
+  let xMax = 1e8; // Math.exp(xMax) is the x-axis bound
+  let yMin = -10; // in percent
+  let yMax = 10;
+  let tickinterval = 0.5; // in percent
+  const x = d3.scaleLog();
+  const y = d3.scaleLinear();
+  const timeoutList = [];
+  let animate = false;
+  let tickers = [];
+
+  const svg = d3.select("svg").attr("height", height).attr("width", width);
+  let svgContainer = document.getElementById("svgGraphContainerid");
+
+  // color gradients for traceline vectors
+  const defs = svg.append("defs");
+  let gradient = defs.append("linearGradient").attr("id", "green-right");
+  gradient.append("stop").attr("stop-color", "rgb(6, 195, 125, 1)").attr("offset", 0).attr("stop-opacity", 0);
+  gradient.append("stop").attr("stop-color", "rgb(6, 195, 125, 1)").attr("offset", 1).attr("stop-opacity", 1);
+  gradient = defs.append("linearGradient").attr("id", "green-left");
+  gradient.append("stop").attr("stop-color", "rgb(6, 195, 125, 1)").attr("offset", 0).attr("stop-opacity", 1);
+  gradient.append("stop").attr("stop-color", "rgb(6, 195, 125, 1)").attr("offset", 1).attr("stop-opacity", 0);
+  gradient = defs.append("linearGradient").attr("id", "red-right");
+  gradient.append("stop").attr("stop-color", "rgb(253, 50, 55, 1)").attr("offset", 0).attr("stop-opacity", 0);
+  gradient.append("stop").attr("stop-color", "rgb(253, 50, 55, 1)").attr("offset", 1).attr("stop-opacity", 1);
+  gradient = defs.append("linearGradient").attr("id", "red-left");
+  gradient.append("stop").attr("stop-color", "rgb(253, 50, 55, 1)").attr("offset", 0).attr("stop-opacity", 1);
+  gradient.append("stop").attr("stop-color", "rgb(253, 50, 55, 1)").attr("offset", 1).attr("stop-opacity", 0);
+
+  const slider = document.getElementById("myRange");
+
+  const titletext = svg
+    .append("g")
+    .append("text")
+    .attr("x", m[3])
+    .attr("y", 100)
+    .attr("font-family", "sans-serif")
+    .attr("font-size", 32)
+    .attr("fill", "rgb(200,200,200)");
+
+  let tickertext = document.createElement("div");
+  tickertext.setAttribute("class", "tickerInfo draggable");
+  tickertext.setAttribute("draggable", "true");
+  tickertext.setAttribute("style", "display: none;");
+  svgContainer.prepend(tickertext);
+
+  // open a json file, or open an API, websocket, or SSE event for streaming data
+
+  var replayingSession = false;
+
+  var fetchDataHasRan = false
+  var hasFetchDataRanAndCompleted = 0;
+  var stockData = "null";
+  async function fetchData(stockData) {
+    replayingSession = false;
+    startTheSessionFadeOut();
+    return new Promise(function(resolve, reject) {
+      //let data = await fetch("./data/bubbles.json");
+      if (hasFetchDataRanAndCompleted == 1) {
+        location.reload();
+      }
+      hasFetchDataRanAndCompleted = 1;
+      let selectElement = document.getElementById("stockDeltaPTimespan");
+      let selectedOption = selectElement.options[selectElement.selectedIndex].value;
+      console.log(selectedOption);
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/bubbles_script");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify({ "stockDeltaPTimespan": selectedOption, stockData }));
+      xhr.onload = function() {
+        let result = this.responseText;
+        result = JSON.parse(result);
+        hasFetchDataRanAndCompleted = 2;
+        if (fetchDataHasRan == true) {
+          resolve(result);
+        }
+        else {
+          fetchDataHasRan = true;
+          resolve(init(result));
+        }
+      };
+    });
+    //return await response;
+  }
+
+  function replaySession() {
+    replayingSession = true;
+    startTheSessionFadeOut();
+    return new Promise(function(resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/replaybubblessession");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send();
+      xhr.onload = function() {
+        let result = this.responseText;
+        result = JSON.parse(result);
+        resolve(init(result));
+      };
+    });
+  }
+
+  function robinhoodLogin() {
+    return new Promise(function(resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/robinhoodlogin");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify({ "RBEmail": document.getElementById("robinhoodEmailid").value, "RBPassword": document.getElementById("robinhoodPasswordid").value }));
+      xhr.onload = function() {
+        let result = this.responseText;
+        if (result == "LoggedIn") {
+          $('#robinhoodLoginModalid').modal('toggle')
+        }
+      };
+    });
+  }
+
+  function buyStock() {
+    return new Promise(function(resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/buystock");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify({ "stockName": document.getElementById("stockNameid").innerHTML, "shareQuantity": document.getElementById("shareQuantityid").value, "stockPrice": document.getElementById("stockPriceid").innerHTML, "stockDeltaP":document.getElementById("stockDeltaPid").innerHTML }));
+      xhr.onload = function() {
+        let result = this.responseText;
+      };
+    });
+  }
+
+  function sellStock() {
+    return new Promise(function(resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/sellstock");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send(JSON.stringify({ "stockName": document.getElementById("stockNameid").innerHTML, "shareQuantity": document.getElementById("shareQuantityid").value, "stockPrice": document.getElementById("stockPriceid").innerHTML, "stockDeltaP":document.getElementById("stockDeltaPid").innerHTML }));
+      xhr.onload = function() {
+        let result = this.responseText;
+      };
+    });
+  }
+
+  function robinhoodHistory() {
+    return new Promise(function(resolve, reject) {
+      let xhr = new XMLHttpRequest();
+      if (xhr.readyState !== 0) {
+        xhr.abort();
+      }
+      xhr.open("POST", "http://127.0.0.1:5000/showrobinhoodhistory");
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.send();
+      xhr.onload = function() {
+        let result = this.responseText;
+      };
+    });
+  }
+  // robinhoodHistory();
+
+  async function init(data) {
+    //let data = await fetchData();
+    console.log("data", data);
+
+    // y-axis scale for change in price
+    y.domain([yMin, yMax]).range([height - m[2], m[0]]);
+    y.clamp(true);
+    // x-axis scale for volume
+    x.domain([xMin, xMax]).range([m[3], width - m[1] - m[3]]);
+    x.clamp(true);
+
+    slider.min = 0;
+    slider.max = data.length - 1;
+
+    drawgrid(svg, x, y);
+
+    tickers = [];
+    Object.values(data[0])[0].forEach((d, i) => {
+      console.log(data[0]);
+      console.log(d)
+      console.log(i)
+      tickers.push({ stock: d.stock, index: i });
+    });
+
+    svg
+      .selectAll(".stock")
+      .data(tickers)
+      .enter()
+      .append("circle")
+      .attr("class", "stock")
+      .attr("fill", "rgba(188,66,245,1)")
+      .attr("stroke", "black")
+      .attr("stroke-width", 1)
+      .attr("r", radius)
+      .on("click", function () {
+        d3.selectAll(".stock").attr("stroke", "black").attr("stroke-width", 1);
+        const circle = d3.select(this);
+        activeStock = d3.select(this);
+        circle.attr("stroke", "rgba(66,245,197,1)").attr("stroke-width", 2);
+        let deltaP = null;
+        let deltaV = null;
+        deltaP = Object.values(data[timeIndex])[0][circle.data()[0].index].delta_p;
+        deltaV = Object.values(data[timeIndex])[0][circle.data()[0].index].delta_v;
+        // if (replayingSession == false) {
+        //   deltaP = Object.values(data[timeIndex])[0][circle.data()[0].index].delta_p;
+        //   deltaV = Object.values(data[timeIndex])[0][circle.data()[0].index].delta_v;
+        // }
+        // else {
+        //   deltaP = (((Object.values(data[timeIndex])[0][circle.data()[0].index].price)/
+        //   (Object.values(data[0])[0][circle.data()[0].index].price))*100)-100
+        //   deltaV = (((Object.values(data[timeIndex])[0][circle.data()[0].index].volume)/
+        //   (Object.values(data[0])[0][circle.data()[0].index].volume))*100)-100
+        // }
+        console.log("at click");
+        let tickerInfoHeadText = "";
+        tickerInfoHeadText = "Since Last Move"
+        // if (replayingSession == false) {
+        //   tickerInfoHeadText = "Since Last Move"
+        // }
+        // else {
+        //   tickerInfoHeadText = "Since Session Start"
+        // }
+        updateTickertextHTML(tickerInfoHeadText, (circle.data()[0].stock), (deltaP.toFixed(2)), (Object.values(data[timeIndex])[0][circle.data()[0].index].price.toFixed(2)), (Object.values(data[timeIndex])[0][circle.data()[0].index].volume.toFixed(2)), (deltaV.toFixed(2)));
+        console.log(circle.data()[0]);
+        console.log(Object.values(data[timeIndex])[0][circle.data()[0].index].delta_p);
+        tickertext.style.display = "block";
+      });
+
+    function tick() {
+      // update circle positions
+      d3.selectAll(".stock")
+        .attr("cx", (d) => d.x)
+        .attr("cy", (d) => d.y);
+
+      // update tracelines to follow circles
+      svg
+        .selectAll(".traceline")
+        .attr("x2", (d) => d.x)
+        .attr("y2", (d) => d.y)
+        .attr("stroke", (d) => {
+          if (d.vy < 0) {
+            if (d.vx >= 0) return "url(#green-right)";
+            else return "url(#green-left)";
+          } else {
+            if (d.vx >= 0) return "url(#red-right)";
+            else return "url(#red-left)";
+          }
+        });
+    }
+
+    const simulation = d3
+      .forceSimulation(tickers)
+      .force(
+        "y",
+        d3
+          .forceY(function (d) {
+            console.log("stock "+Object.values(data[timeIndex])[0][d.index]["stock"])
+            console.log("delgaP "+Object.values(data[timeIndex])[0][d.index]["delta_p"])
+            return y(Object.values(data[timeIndex])[0][d.index]["delta_p"]);
+          })
+          .strength(yForceStrength)
+      )
+      .force(
+        "x",
+        d3
+          .forceX((d) => {
+            return x(Object.values(data[timeIndex])[0][d.index]["delta_v"] || 1);
+          })
+          .strength(xForceStrength)
+      )
+      .force("collide", d3.forceCollide(radius))
+      .alphaDecay(0)
+      .alpha(alpha)
+      .on("tick", tick);
+
+    decayTimeout = setTimeout(function () {
+      console.log("init alpha decay");
+      simulation.alphaDecay(0.1);
+    }, 3000);
+
+    window.addEventListener("resize", () => {
+      console.log("resize");
+      width = document.querySelector(".app").clientWidth;
+      height = document.querySelector(".app").clientHeight;
+      svg.attr("width", width);
+      svg.attr("height", height);
+      y.domain([yMin, yMax]).range([height - m[2], m[0]]);
+      x.domain([xMin, xMax]).range([m[3], width - m[1] - m[3]]);
+      //tickertext.attr("x", width - m[1] - m[3]);
+      drawgrid(svg, x, y);
+      updateSim(simulation, data);
+    });
+
+    // Update forces when we move the slider
+    // If streaming data, use a listener for SSE or Websocket events
+    slider.oninput = function () {
+      timeIndex = parseInt(this.value);
+      updateSim(simulation, data);
+      drawTracelines();
+      //console.log(epochToDateTime(parseInt(Object.keys(data[timeIndex])[0])));
+      titletext.text(epochToDateTime(parseInt(Object.keys(data[timeIndex])[0])));
+      if (activeStock) {
+        //tickertext.innerHTML = `${activeStock.data()[0].stock} ${Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p.toFixed(2)}%`;
+        let deltaP = null;
+        let deltaV = null;
+        deltaP = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p
+        deltaV = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_v
+        // if (replayingSession == false) {
+        //   deltaP = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p
+        //   deltaV = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_v
+        // }
+        // else {
+        //   deltaP = (((Object.values(data[timeIndex])[0][activeStock.data()[0].index].price)/
+        //   (Object.values(data[0])[0][activeStock.data()[0].index].price))*100)-100
+        //   deltaV = (((Object.values(data[timeIndex])[0][activeStock.data()[0].index].volume)/
+        //   (Object.values(data[0])[0][activeStock.data()[0].index].volume))*100)-100
+        // }
+        console.log("at AS1");
+        let tickerInfoHeadText = "";
+        tickerInfoHeadText = "Since Last Move"
+        // if (replayingSession == false) {
+        //   tickerInfoHeadText = "Since Last Move"
+        // }
+        // else {
+        //   tickerInfoHeadText = "Since Session Start"
+        // }
+        updateTickertextHTML(tickerInfoHeadText, (activeStock.data()[0].stock), (deltaP.toFixed(2)), (Object.values(data[timeIndex])[0][activeStock.data()[0].index].price.toFixed(2)), (Object.values(data[timeIndex])[0][activeStock.data()[0].index].volume.toFixed(2)), (deltaV.toFixed(2)));
+      }
+    };
+
+    //start animation
+    d3.select("#play").on("click", function () {
+      console.log("animate");
+      console.log(Object.values(data[timeIndex])[0]);
+      animate = true;
+      document.querySelector("#play").disabled = true;
+
+      isIntervalRunning = true;
+      intervalTimer = setInterval(async() => {
+        if (!isIntervalRunning) {
+          return;
+        }
+        isIntervalRunning = false
+        slider.value = timeIndex;
+        
+        //document.getElementById("autoSetY").click();
+        if (replayingSession == false) {
+          data = await fetchData(data);
+        }
+
+        if (timeIndex < data.length) {
+          updateSim(simulation, data);
+          //console.log("hellouuuuuuu " + parseInt(Object.keys(data[timeIndex])[0]))
+          //console.log(epochToDateTime(parseInt(Object.keys(data[timeIndex])[0])));
+          titletext.text(epochToDateTime(parseInt(Object.keys(data[timeIndex])[0])));
+          if (activeStock) {
+            //tickertext.innerHTML = `${activeStock.data()[0].stock} ${Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p.toFixed(2)}%`;
+            let deltaP = null;
+            let deltaV = null;
+            deltaP = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p
+            deltaV = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_v
+            // if (replayingSession == false) {
+            //   deltaP = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_p
+            //   deltaV = Object.values(data[timeIndex])[0][activeStock.data()[0].index].delta_v
+            // }
+            // else {
+            //   deltaP = (((Object.values(data[timeIndex])[0][activeStock.data()[0].index].price)/
+            //   (Object.values(data[0])[0][activeStock.data()[0].index].price))*100)-100
+            //   deltaV = (((Object.values(data[timeIndex])[0][activeStock.data()[0].index].volume)/
+            //   (Object.values(data[0])[0][activeStock.data()[0].index].volume))*100)-100
+            // }
+            console.log("at AS2");
+            let tickerInfoHeadText = "";
+            tickerInfoHeadText = "Since Last Move"
+            // if (replayingSession == false) {
+            //   tickerInfoHeadText = "Since Last Move"
+            // }
+            // else {
+            //   tickerInfoHeadText = "Since Session Start"
+            // }
+            updateTickertextHTML(tickerInfoHeadText, (activeStock.data()[0].stock), (deltaP.toFixed(2)), (Object.values(data[timeIndex])[0][activeStock.data()[0].index].price.toFixed(2)), (Object.values(data[timeIndex])[0][activeStock.data()[0].index].volume.toFixed(2)), (deltaV.toFixed(2)));
+          }
+        }
+
+        drawTracelines();
+
+        if (timeIndex < data.length - 1) {
+          timeIndex += 1;
+        } else {
+          if (replayingSession == true) {
+            clearInterval(intervalTimer);
+            document.querySelector("#play").disabled = false;
+            animate = false;
+          }
+        }
+        isIntervalRunning = true;
+      }, frequency);
+    });
+
+    d3.select("#stop").on("click", function () {
+      console.log("stop");
+      animate = false;
+      document.querySelector("#play").disabled = false;
+      clearInterval(intervalTimer);
+    });
+
+    d3.select("#speedUp").on("click", function () {
+      console.log("speed up");
+      let tps = 1000 / frequency;
+      tps = tps + 1 > 20 ? 20 : tps + 1;
+      frequency = 1000 / tps;
+      d3.select("#tickspersecond").text(`${tps.toFixed(0)} ticks per second`);
+      console.log("frequency", frequency);
+      clearInterval(intervalTimer);
+      if (animate) d3.select("#play").on("click")();
+    });
+
+    d3.select("#speedDown").on("click", function () {
+      console.log("speed down");
+      let tps = 1000 / frequency;
+      tps = tps - 1 < 1 ? 1 : tps - 1;
+      frequency = 1000 / tps;
+      d3.select("#tickspersecond").text(`${tps.toFixed(0)} ticks per second`);
+      console.log("frequency", frequency);
+      clearInterval(intervalTimer);
+      if (animate) d3.select("#play").on("click")();
+    });
+
+    d3.select("#autoSetY").on("click", function () {
+      autoSetY(simulation, data);
+    });
+
+    d3.select("#autoSetX").on("click", function () {
+      autoSetX(simulation, data);
+    });
+
+    d3.select("#setY").on("click", function () {
+      setY(simulation, data);
+    });
+
+    d3.select("#minX").on("change", function (e) {
+      xMin = document.querySelector("#minX").value;
+      x.domain([xMin, xMax]);
+      drawgrid(svg, x, y);
+      updateSim(simulation, data);
+    });
+
+    d3.select("#maxX").on("change", function (e) {
+      xMax = document.querySelector("#maxX").value;
+      x.domain([xMin, xMax]);
+      drawgrid(svg, x, y);
+      updateSim(simulation, data);
+    });
+
+    document.getElementById("play").click();
+  }
+
+  function drawTracelines() {
+    svg.selectAll(".traceline").remove();
+    svg
+      .selectAll(".traceline")
+      .data(tickers)
+      .enter()
+      .append("line")
+      .attr("class", "traceline")
+      .attr("stroke", (d) => `url(#gradient)`)
+      .attr("x1", (d) => d.x)
+      .attr("x2", (d) => d.x)
+      .attr("y1", (d) => d.y)
+      .attr("y2", (d) => d.y)
+      .attr("stroke-width", 2)
+      .attr("opacity", 1)
+      .lower()
+      .transition()
+      .duration(2000)
+      .attr("opacity", 0)
+      .remove();
+  }
+
+  function autoSetY(simulation, data) {
+    let thisTick = Object.values(data[timeIndex])[0];
+    y.domain([d3.min(thisTick, (d) => d.delta_p), d3.max(thisTick, (d) => d.delta_p)]); // calibrate axis
+    yMin = Math.round(y.domain()[0]); // in percent, so 1 percent is yMin = 1
+    yMax = Math.round(y.domain()[1]);
+    drawgrid(svg, x, y);
+    updateSim(simulation, data);
+  }
+
+  function autoSetX(simulation, data) {
+    let thisTick = Object.values(data[timeIndex])[0];
+    x.domain([d3.min(thisTick, (d) => d.delta_v) || 1, d3.max(thisTick, (d) => d.delta_v)]); // calibrate axis
+    xMin = Math.round(x.domain()[0]);
+    xMax = Math.round(x.domain()[1]);
+    drawgrid(svg, x, y);
+    updateSim(simulation, data);
+  }
+
+  function setY(simulation, data) {
+    yMin = parseFloat(document.querySelector("#yMin").value) || yMin;
+    yMax = parseFloat(document.querySelector("#yMax").value) || yMax;
+    y.domain([yMin, yMax]);
+    drawgrid(svg, x, y);
+    updateSim(simulation, data);
+  }
+
+  function updateSim(simulation, data) {
+    simulation
+      .force(
+        "y",
+        d3.forceY(function (d) {
+          //console.log("START");
+          //console.log(frequency);
+          return y(Object.values(data[timeIndex])[0][d.index]["delta_p"]);
+        })
+      )
+      .force(
+        "x",
+        d3.forceX((d) => {
+          return x(Object.values(data[timeIndex])[0][d.index]["delta_v"] || 1);
+          //   return x(Math.log(Object.values(data[timeIndex])[0][d.index]["volume"] || 1));
+        })
+      );
+
+    simulation.alphaDecay(0).alpha(alpha).restart();
+    clearTimeout(decayTimeout);
+    decayTimeout = setTimeout(function () {
+      console.log("init alpha decay");
+      simulation.alphaDecay(0.1);
+    }, 3000);
+  }
+
+  function drawgrid(svg, x, y) {
+    console.log("drawgrid");
+    y.nice();
+    // zero line
+    svg.select(".gridlines").remove();
+    let g = svg.append("g").attr("class", "gridlines").lower();
+
+    // zero percent line
+    g.append("line")
+      .attr("x1", 100)
+      .attr("x2", width - 100)
+      .attr("y1", y(0))
+      .attr("y2", y(0))
+      //.attr("stroke", "rgba(255,255,255,0.2")
+      .attr("stroke", "rgba(255,255,255,1.0")
+      .attr("stroke-dasharray", "12 4")
+      .attr("stroke-width", "2");
+
+    y.ticks().forEach((tick, i) => {
+      if (tick !== 0) {
+        g.append("line")
+          .attr("x1", 100)
+          .attr("x2", width - 100)
+          .attr("y1", y(tick))
+          .attr("y2", y(tick))
+          //.attr("stroke", "rgba(255,255,255,0.15")
+          .attr("stroke", "rgba(255,255,255,0.75")
+          .attr("stroke-width", "1");
+      }
+      g.append("text") // left labels
+        .attr("x", 80)
+        .attr("y", y(tick))
+        .attr("fill", "white")
+        .attr("alignment-baseline", "middle")
+        .attr("text-anchor", "end")
+        .text(tick + "%");
+    });
+
+    // x-grid (vertical lines)
+    // number of ticks should align with the powers of 10 in the domain
+    x.nice();
+    x.ticks(xMax.toString().length - xMin.toString().length).forEach((tick) => {
+      g.append("line")
+        .attr("x1", x(tick))
+        .attr("x2", x(tick))
+        .attr("y1", y.range()[0])
+        .attr("y2", y.range()[1])
+        // .attr("stroke", "rgba(0,0,0,0.15")
+        .attr("stroke", "rgba(255,255,255,0.75")
+        .attr("stroke-width", "1");
+      g.append("text")
+        .attr("x", x(tick))
+        .attr("y", y.range()[0] + 30)
+        .attr("fill", "white")
+        .attr("text-anchor", "middle")
+        .text(tick.toLocaleString("en-US"));
+    });
+
+    g.append("text")
+      .attr("x", width / 2)
+      .attr("y", y.range()[0] + 55)
+      .attr("fill", "white")
+      .attr("text-anchor", "middle")
+      .attr("class", "axisTitles")
+      .text("Volume");
+  }
+
+  function epochToDateTime(epoch) {
+    let dateObj = new Date(epoch * 1000);
+    let year = dateObj.getFullYear();
+    let month = dateObj.toLocaleString('default', { month: 'long' });
+    let day = dateObj.toLocaleString('default', { weekday: 'long' });
+    let hours = ("0" + dateObj.getHours()).slice(-2);
+    let minutes = ("0" + dateObj.getMinutes()).slice(-2);
+    let seconds = ("0" + dateObj.getSeconds()).slice(-2);
+    let AMOrPM = dateObj.toLocaleString('default', { hour12: true, hour: 'numeric' }).slice(-2);
+    let dateTime = year + " " + month + " " + day + " " + hours + ":" + minutes + ":" + seconds + " " + AMOrPM;
+    return dateTime;
+  }
+  
+  const draggable = document.querySelector('.draggable');
+  let initialX, initialY, currentX, currentY;
+  let xOffset = 0, yOffset = 0;
+  let active = false;
+
+  draggable.addEventListener('mousedown', dragStart);
+  draggable.addEventListener('mouseup', dragEnd);
+  document.addEventListener('mousemove', drag);
+
+  function dragStart(event) {
+    initialX = event.clientX - xOffset;
+    initialY = event.clientY - yOffset;
+
+    if (event.target === draggable) {
+      active = true;
+    }
+  }
+
+  function dragEnd() {
+    initialX = currentX;
+    initialY = currentY;
+    active = false;
+  }
+
+  function drag(event) {
+    if (active) {
+      event.preventDefault();
+      currentX = event.clientX - initialX;
+      currentY = event.clientY - initialY;
+      xOffset = currentX;
+      yOffset = currentY;
+      setTranslate(currentX, currentY, draggable);
+    }
+  }
+
+  function setTranslate(xPos, yPos, el) {
+    el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+  }
+
+  function startTheSessionFadeOut() {
+    document.getElementById('sessionNotStartid').style.opacity = "0";
+    document.getElementById('sessionNotStartid').style.transition = "opacity 0.8s ease-out";
+  }
+
+  let updateTickertextHTMLHasRan = false;
+  function updateTickertextHTML(tickerHeadTitle, stockName, stockDeltaP, stockPrice, stockVolume, stockDeltaV) {
+    if (updateTickertextHTMLHasRan == false) {
+      tickertext.innerHTML = `<div id="tickerInfoHeadid" class="tickerInfoHead">${tickerHeadTitle}</div>`;
+      tickertext.innerHTML += `<span id="stockNameid">${stockName}</span> <span id="stockDeltaPid">${stockDeltaP}</span>%`;
+      tickertext.innerHTML += `<br>Current Value: $<span id="stockPriceid">${stockPrice}</span>`;
+      tickertext.innerHTML += `<br>Volume: <span id="stockVolumeid">${stockVolume}</span>`;
+      tickertext.innerHTML += `<br>Avg. Volume: <span id="stockDeltaVid">${stockDeltaV}</span>`;
+      tickertext.innerHTML += `<br><label for"shareQuantityid" class="">Share Quantity:</label>`;
+      tickertext.innerHTML += `<br><input id="shareQuantityid" name="shareQuantityid" class="" type="text" placeholder="0">`;
+      tickertext.innerHTML += `<br>Buy/Sell: $<span id="shareQuantityTimesPriceid">0</span>`;
+      tickertext.innerHTML += `<br><button type="button" onclick="buyStock()" class="btn btn-dark buySellStockInTickerInfo buyStockInTickerInfo">Buy <span id="buyStockNameid">${stockName}</span></button>`;
+      tickertext.innerHTML += `<button type="button" onclick="sellStock()" class="btn btn-dark buySellStockInTickerInfo sellStockInTickerInfo">Sell <span id="sellStockNameid">${stockName}</span></button>`;
+      document.getElementById("shareQuantityid").addEventListener('input', () => {
+        let inputValue = document.getElementById("shareQuantityid").value;
+        let stockPrice = parseFloat(document.getElementById("stockPriceid").innerHTML);
+        document.getElementById("shareQuantityTimesPriceid").innerHTML = (inputValue*stockPrice).toFixed(2);
+      });
+      updateTickertextHTMLHasRan = true;
+    }
+    else {
+      document.getElementById("tickerInfoHeadid").innerHTML = tickerHeadTitle;
+      document.getElementById("stockNameid").innerHTML = stockName;
+      document.getElementById("stockDeltaPid").innerHTML = stockDeltaP;
+      document.getElementById("stockPriceid").innerHTML = stockPrice;
+      document.getElementById("shareQuantityTimesPriceid").innerHTML = ((document.getElementById("shareQuantityid").value)*stockPrice).toFixed(2);
+      document.getElementById("stockVolumeid").innerHTML = stockVolume;
+      document.getElementById("stockDeltaVid").innerHTML = stockDeltaV;
+      document.getElementById("buyStockNameid").innerHTML = stockName;
+      document.getElementById("sellStockNameid").innerHTML = stockName;
+    }
+  }
+
+  // function triggerRobinhoodLoginModal() {
+  //   $('#robinhoodLoginModalid').modal('toggle')
+  // }
+  //fetchData();
+</script>

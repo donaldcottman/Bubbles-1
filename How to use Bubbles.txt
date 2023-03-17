@@ -1,0 +1,4 @@
+
+When to, and how to, use Bubbles: 8:20 A.M. Monday, if gaing ~8%-~10% (if this stock had a large gain before in the past 6 months, i.e. ~30%), go in and set a sell for 30% higher, and a stoploss of 30%
+
+^ Remove all stuff that prevents the "No Data" from appearing, because the result above was from a point in the script when "No Data" was happening for the majority, or roughly half of the 5000 exchange stocks
