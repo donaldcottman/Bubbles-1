@@ -35,7 +35,7 @@ def run_script():
         # The top 200 stocks, will be null if the user just started the session because it hasn't sorted through 5,000+ stocks yet
         topStockData = data['stockData']
         print(chosenInterval)
-        print(topStockData)
+        # print(topStockData)
 
         # Getting list of all NASDAQ-traded stocks
         url = 'https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqtraded.txt'
@@ -158,6 +158,12 @@ def run_script():
                 if hist_data_totalVolume == False:
                     return False
                 
+                try:
+                    value = hist_data_totalVolume["results"]
+                except KeyError:
+                    print(f"No Data {stock}")
+                    return False
+
                 FiftyDayVolume = 0
                 for FiftyDayVolumei in range(len(hist_data_totalVolume["results"])):
                     FiftyDayVolume += hist_data_totalVolume["results"][FiftyDayVolumei]["v"]
@@ -210,12 +216,12 @@ def run_script():
                 #     return False
                 # return bubblesUpdate(stock, countOfStockTries)
                 return False
-            if (stockVolume == 0):
-                try:
-                    value = hist_data_totalVolume["results"]
-                except KeyError:
-                    print(f"No Data {stock}")
-                    return False
+            # if (stockVolume == 0):
+            #     try:
+            #         value = hist_data_totalVolume["results"]
+            #     except KeyError:
+            #         print(f"No Data {stock}")
+            #         return False
             #print(hist_data["results"])
             stockTimeIndex = 2
             # Return False if there is no data from the start time to current time within the desired interval OR if the total volume is below 100,000
@@ -265,11 +271,11 @@ def run_script():
                 'volume': current_volume,
                 'delta_p': deltaP,
                 'delta_t': deltaT,
-                'delta_v': deltaV,
+                'delta_v': 10000,
                 'vwap': current_volumeWeighted,
                 'start_price': start_price
             }
-            print(f"{stock} volume {current_volume}")
+            print(f"{stock} AVG. volume {deltaV}")
             #global bubbles_JSON
             #global bubbles_JSONString
             # stock_JSONString = json.dumps(stock_JSON)
@@ -375,6 +381,8 @@ def run_script():
 
     # START, up until "END," the entire section pretty much determines the number of CPU threads available, and runs the part of the script we want on each of those threads, and then compiles all of them together once they've finished, and then sorts them in alphabetical order(so when app.py is run again everytime the Bubbles stocks updates, it will always get back the same list order, which is alphabetical order, so it knows which circle is which stock in the index. It's not sorted by P value because we already have the top 200 stocks based on absolute P value, so sorting by P value wouldn't change anything, and would make it worse as the stocks' positions in the index would change whenever their P values increase or decrease).
     num_instances = multiprocessing.cpu_count()
+    if (num_instances > 8):
+        num_instances = 8
     result_list = []
     threads = []
     for i in range(num_instances):
